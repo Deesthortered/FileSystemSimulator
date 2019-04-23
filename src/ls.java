@@ -48,6 +48,7 @@ public class ls
             // if name is a regular file, print the info
             if( type == Kernel.S_IFREG )
             {
+                System.out.println("FILE");
                 print( name , stat ) ;
             }
 
@@ -129,6 +130,27 @@ public class ls
 
         // a temporary string
         String t = null ;
+        short ts = 0;
+
+        // append mode information
+        ts = (short) stat.getMode();
+        s.append( ' ' );
+        s.append( (ts & Kernel.S_IRWXU) >> 6 );
+        s.append( (ts & Kernel.S_IRWXG) >> 3 );
+        s.append( ts & Kernel.S_IRWXO );
+        s.append( ' ' );
+
+        // append uid info
+        ts = stat.getUid();
+        s.append( ' ' );
+        s.append( ts );
+        s.append( ' ' );
+
+        // append uid info
+        ts = stat.getGid();
+        s.append( ' ' );
+        s.append( ts );
+        s.append( ' ' );
 
         // append the inode number in a field of 5
         t = Integer.toString( stat.getIno() ) ;
