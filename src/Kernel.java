@@ -1294,92 +1294,45 @@ to be done:
         return previous_mask;
     }
     public static int link( String pathname_in, String pathname_out ) throws Exception {
-        String fullPath_in = getFullPath( pathname_in ) ;
-        String fullPath_out = getFullPath( pathname_out ) ;
+        String fullPath_in = getFullPath(pathname_in);
+        String fullPath_out = getFullPath(pathname_out);
 
-        IndexNode indexNode_from = new IndexNode() ;
-        short indexNodeNumber_from = findIndexNode( fullPath_in , indexNode_from ) ;
-        if( indexNodeNumber_from < 0 ){
-            Kernel.perror( PROGRAM_NAME ) ;
-            System.err.println( PROGRAM_NAME + ": unable to open file for reading" );
-            Kernel.exit( 1 ) ;
+        IndexNode indexNode_from = new IndexNode();
+        short indexNodeNumber_from = findIndexNode(fullPath_in, indexNode_from);
+        if (indexNodeNumber_from < 0) {
+            Kernel.perror(PROGRAM_NAME);
+            System.err.println(PROGRAM_NAME + ": unable to open file for reading");
+            Kernel.exit(1);
         }
 
         String sub_path = fullPath_out.substring(0, fullPath_out.lastIndexOf('/'));
-        String end_name = fullPath_out.substring(fullPath_out.lastIndexOf('/')+1);
+        String end_name = fullPath_out.substring(fullPath_out.lastIndexOf('/') + 1);
 
         if (sub_path.equals("")) sub_path = "/";
-        int dir = open( sub_path , O_RDWR ) ;
-        if( dir < 0 ) {
-            Kernel.perror( PROGRAM_NAME ) ;
-            System.err.println( PROGRAM_NAME + ": unable to open directory for writing" );
-            Kernel.exit( 1 ) ;
+        int dir = open(sub_path, O_RDWR);
+        if (dir < 0) {
+            Kernel.perror(PROGRAM_NAME);
+            System.err.println(PROGRAM_NAME + ": unable to open directory for writing");
+            Kernel.exit(1);
         }
 
-        DirectoryEntry newDirectoryEntry = new DirectoryEntry( indexNodeNumber_from , end_name ) ;
+        DirectoryEntry newDirectoryEntry = new DirectoryEntry(indexNodeNumber_from, end_name);
         DirectoryEntry musor = new DirectoryEntry();
         while (true) {
-            int status = readdir( dir , musor ) ;
-            if( status < 0 )
-            {
-                System.err.println( PROGRAM_NAME +
-                        ": error reading directory in creat" ) ;
-                System.exit( EXIT_FAILURE ) ;
-            }
-            else if( status == 0 )
-            {
-                writedir( dir , newDirectoryEntry ) ;
-                break ;
+            int status = readdir(dir, musor);
+            if (status < 0) {
+                System.err.println(PROGRAM_NAME +
+                        ": error reading directory in creat");
+                System.exit(EXIT_FAILURE);
+            } else if (status == 0) {
+                writedir(dir, newDirectoryEntry);
+                break;
             }
         }
         close(dir);
 
         indexNode_from.setNlink((short) (indexNode_from.getNlink() + 1));
         openFileSystems[ROOT_FILE_SYSTEM].writeIndexNode(indexNode_from, indexNodeNumber_from);
-        return 0;
-    }
-
-    public static int chown( String path, short ownerId, short groupId) throws Exception  {
-        String fullPath = getFullPath( path ) ;
-
-        IndexNode indexNode = new IndexNode() ;
-        short indexNodeNumber = findIndexNode( fullPath , indexNode ) ;
-
-        if( indexNodeNumber < 0 ){
-            Kernel.perror( PROGRAM_NAME ) ;
-            System.err.println( PROGRAM_NAME + ": unable to open file for reading" );
-            Kernel.exit( 1 ) ;
-            return -1;
-        }
-
-        // if we need to change the groupId
-        if (groupId >= 0) {
-            // current user is an owner or a super-user
-            if (indexNode.getUid() == process.getUid() || process.getUid() == 0) {
-                indexNode.setGid(groupId);
-                openFileSystems[ROOT_FILE_SYSTEM].writeIndexNode(indexNode, indexNodeNumber);
-            } else {
-                Kernel.perror( PROGRAM_NAME ) ;
-                System.err.println( PROGRAM_NAME + ": you haven't access" );
-                Kernel.exit( 2 ) ;
-                return -1;
-            }
-        }
-
-        // if we need to change the ownerId
-        if (ownerId >= 0) {
-            // only the super-user may change the uid of the file
-            if (process.getUid() == 0) {
-                indexNode.setUid(ownerId);
-                System.out.println(indexNode.getUid());
-                openFileSystems[ROOT_FILE_SYSTEM].writeIndexNode(indexNode, indexNodeNumber);
-            } else {
-                Kernel.perror( PROGRAM_NAME ) ;
-                System.err.println( PROGRAM_NAME + ": you haven't access" );
-                Kernel.exit( 2 ) ;
-                return -1;
-            }
-        }
         return 0;
     }
 
