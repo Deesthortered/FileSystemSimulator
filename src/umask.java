@@ -17,6 +17,7 @@ public class umask {
                 System.err.println( PROGRAM_NAME + ": cannot to change umask" ) ;
                 Kernel.exit( 2 ) ;
             }
+            System.out.println("Previous mask is " + Integer.toOctalString(res));
 
             Kernel.exit(0);
         } catch (Exception e) {

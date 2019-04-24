@@ -434,6 +434,33 @@ public class Kernel
             }
         }
 
+        assert prevIndexNode != null;
+        if (process.getUid() != 0) {
+            short parent_mode = prevIndexNode.getMode();
+            if (prevIndexNode.getUid() == process.getUid()) {
+                if ( (parent_mode & S_IWUSR) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else if (prevIndexNode.getGid() == process.getGid()) {
+                if ( (parent_mode & S_IWGRP) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else {
+                if ( (parent_mode & S_IWOTH) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            }
+        }
+
         // ??? we need to set some fields in the file descriptor
         int flags = O_WRONLY ; // ???
         FileDescriptor fileDescriptor = null ;
@@ -447,7 +474,10 @@ public class Kernel
             // return (EACCES) if the file does not exist and the directory
             // in which it is to be created is not writable
 
-            currIndexNode.setMode( mode ) ;
+            currIndexNode.setUid(process.getUid());
+            currIndexNode.setGid(process.getGid());
+
+            currIndexNode.setMode((short) ( (mode & ~0777) | (0777 & ~process.getUmask()) ) );
             currIndexNode.setNlink( (short)1 ) ;
 
             // allocate the next available inode from the file system
@@ -558,9 +588,38 @@ public class Kernel
                 return -1 ;
             }
 
+            if (process.getUid() != 0) {
+                short sub_mode = currIndexNode.getMode();
+                if (currIndexNode.getUid() == process.getUid()) {
+                    if ( (sub_mode & S_IWUSR) == 0 ) {
+                        Kernel.perror(PROGRAM_NAME);
+                        System.err.println(PROGRAM_NAME +
+                                ": permission denied");
+                        Kernel.exit(3);
+                    }
+                } else if (currIndexNode.getGid() == process.getGid()) {
+                    if ( (sub_mode & S_IWGRP) == 0 ) {
+                        Kernel.perror(PROGRAM_NAME);
+                        System.err.println(PROGRAM_NAME +
+                                ": permission denied");
+                        Kernel.exit(3);
+                    }
+                } else {
+                    if ( (sub_mode & S_IWOTH) == 0 ) {
+                        Kernel.perror(PROGRAM_NAME);
+                        System.err.println(PROGRAM_NAME +
+                                ": permission denied");
+                        Kernel.exit(3);
+                    }
+                }
+            }
             // check to see if the file is writeable by the user
             // ??? tbd
             // return (EACCES) if the file does exist and is unwritable
+
+            currIndexNode.setMode((short) (short) ( (currIndexNode.getMode() & ~0777) | (0777 & ~process.getUmask()) ) );
+            currIndexNode.setUid(process.getUid());
+            currIndexNode.setGid(process.getGid());
 
             // free any blocks currently allocated to the file
             int blockSize = fileSystem.getBlockSize() ;
@@ -815,6 +874,33 @@ public class Kernel
             return status ;
 
         FileDescriptor file = process.openFiles[fd] ;
+
+        short mode = file.getIndexNode().getMode();
+        if (process.getUid() != 0) {
+            if (file.getIndexNode().getUid() == process.getUid()) {
+                if ( (mode & S_IRUSR) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else if (file.getIndexNode().getGid() == process.getGid()) {
+                if ( (mode & S_IRGRP) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else {
+                if ( (mode & S_IROTH) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            }
+        }
+
         int offset = file.getOffset() ;
         int size = file.getSize() ;
         int blockSize = file.getBlockSize() ;
@@ -998,6 +1084,31 @@ public class Kernel
 
         // return (ENOSPC) if the device containing the file system
         // referred to by fd has not room for the data
+        if (process.getUid() != 0) {
+            short mode = file.getIndexNode().getMode();
+            if (file.getIndexNode().getUid() == process.getUid()) {
+                if ( (mode & S_IWUSR) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else if (file.getIndexNode().getGid() == process.getGid()) {
+                if ( (mode & S_IWGRP) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else {
+                if ( (mode & S_IWOTH) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            }
+        }
 
         int offset = file.getOffset() ;
         int size = file.getSize() ;
@@ -1129,28 +1240,54 @@ to be done:
        mode_t umask(mode_t mask);
 */
     public static int chmod( String pathname, short new_mode ) throws Exception {
-    String fullPath = getFullPath( pathname ) ;
+        String fullPath = getFullPath( pathname ) ;
 
-    IndexNode indexNode = new IndexNode() ;
-    short indexNodeNumber = findIndexNode( fullPath , indexNode ) ;
-    if( indexNodeNumber < 0 ){
-        Kernel.perror( PROGRAM_NAME ) ;
-        System.err.println( PROGRAM_NAME + ": unable to open file for reading" );
-        Kernel.exit( 1 ) ;
-    }
+        IndexNode indexNode = new IndexNode() ;
+        short indexNodeNumber = findIndexNode( fullPath , indexNode ) ;
+        if( indexNodeNumber < 0 ){
+            Kernel.perror( PROGRAM_NAME ) ;
+            System.err.println( PROGRAM_NAME + ": unable to open file for reading" );
+            Kernel.exit( 1 ) ;
+        }
 
-    if (indexNode.getUid() == process.getUid() || process.getUid() == 0) {
-        indexNode.setMode((short) ((indexNode.getMode() & (~0777)) | new_mode));
-        openFileSystems[ROOT_FILE_SYSTEM].writeIndexNode(indexNode, indexNodeNumber);
-    }
-    else {
-        Kernel.perror( PROGRAM_NAME ) ;
-        System.err.println( PROGRAM_NAME + ": you haven't access" );
-        Kernel.exit( 1 ) ;
-    }
+        if (process.getUid() != 0) {
+            short mode = indexNode.getMode();
+            if (indexNode.getUid() == process.getUid()) {
+                if ( (mode & S_IWUSR) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else if (indexNode.getGid() == process.getGid()) {
+                if ( (mode & S_IWGRP) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            } else {
+                if ( (mode & S_IWOTH) == 0 ) {
+                    Kernel.perror(PROGRAM_NAME);
+                    System.err.println(PROGRAM_NAME +
+                            ": permission denied");
+                    Kernel.exit(3);
+                }
+            }
+        }
 
-    return 0;
-}
+        if (indexNode.getUid() == process.getUid() || process.getUid() == 0) {
+            indexNode.setMode((short) ((indexNode.getMode() & (~0777)) | new_mode));
+            openFileSystems[ROOT_FILE_SYSTEM].writeIndexNode(indexNode, indexNodeNumber);
+        }
+        else {
+            Kernel.perror( PROGRAM_NAME ) ;
+            System.err.println( PROGRAM_NAME + ": you haven't access" );
+            Kernel.exit( 1 ) ;
+        }
+
+        return 0;
+    }
     public static short umask(short mask) throws Exception {
         short previous_mask = process.getUmask();
         process.setUmask( (short) ((process.getUmask() & (~0777)) | mask));
@@ -1197,6 +1334,8 @@ to be done:
         }
         close(dir);
 
+        indexNode_from.setNlink((short) (indexNode_from.getNlink() + 1));
+        openFileSystems[ROOT_FILE_SYSTEM].writeIndexNode(indexNode_from, indexNodeNumber_from);
         return 0;
     }
 

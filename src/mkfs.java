@@ -197,7 +197,7 @@ public class mkfs
         rootIndexNode.setBlockAddress( 0 , 0 ) ;
 
         // the root inode is a directory inode
-        rootIndexNode.setMode( Kernel.S_IFDIR ) ;
+        rootIndexNode.setMode((short) (Kernel.S_IFDIR | 0777)) ; // что бы сразу все могли чет менять
 
         // there are two directory entries in the root file system,
         // so we set the file size accordingly.
