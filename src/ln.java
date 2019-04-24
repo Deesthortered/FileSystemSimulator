@@ -8,7 +8,7 @@ public class ln {
             in = args[0];
             out = args[1];
         } else {
-            System.out.println("Sosi hui");
+            System.out.println("Error: need more arguments");
             System.exit(1);
         }
 

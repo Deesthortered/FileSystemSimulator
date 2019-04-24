@@ -1129,7 +1129,7 @@ to be done:
        mode_t umask(mode_t mask);
 */
 
-    public static int link( String pathname_in, String pathname_out) throws Exception {
+    public static int link( String pathname_in, String pathname_out ) throws Exception {
         String fullPath_in = getFullPath( pathname_in ) ;
         String fullPath_out = getFullPath( pathname_out ) ;
 
@@ -1169,6 +1169,27 @@ to be done:
             }
         }
         close(dir);
+
+        return 0;
+    }
+    public static int chmod( String pathname, short new_mode ) throws Exception {
+        String fullPath = getFullPath( pathname ) ;
+
+        IndexNode indexNode = new IndexNode() ;
+        short indexNodeNumber = findIndexNode( fullPath , indexNode ) ;
+        if( indexNodeNumber < 0 ){
+            Kernel.perror( PROGRAM_NAME ) ;
+            System.err.println( PROGRAM_NAME + ": unable to open file for reading" );
+            Kernel.exit( 1 ) ;
+        }
+
+        if (indexNode.getUid() == process.getUid() || process.getUid() == 0)
+            indexNode.setMode((short) ((indexNode.getMode() & (~0777)) | new_mode));
+        else {
+            Kernel.perror( PROGRAM_NAME ) ;
+            System.err.println( PROGRAM_NAME + ": you haven't access" );
+            Kernel.exit( 1 ) ;
+        }
 
         return 0;
     }
