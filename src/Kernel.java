@@ -1129,6 +1129,50 @@ to be done:
        mode_t umask(mode_t mask);
 */
 
+    public static int link( String pathname_in, String pathname_out) throws Exception {
+        String fullPath_in = getFullPath( pathname_in ) ;
+        String fullPath_out = getFullPath( pathname_out ) ;
+
+        IndexNode indexNode_from = new IndexNode() ;
+        short indexNodeNumber_from = findIndexNode( fullPath_in , indexNode_from ) ;
+        if( indexNodeNumber_from < 0 ){
+            Kernel.perror( PROGRAM_NAME ) ;
+            System.err.println( PROGRAM_NAME + ": unable to open file for reading" );
+            Kernel.exit( 1 ) ;
+        }
+
+        String sub_path = fullPath_out.substring(0, fullPath_out.lastIndexOf('/'));
+        String end_name = fullPath_out.substring(fullPath_out.lastIndexOf('/')+1);
+
+        if (sub_path.equals("")) sub_path = "/";
+        int dir = open( sub_path , O_RDWR ) ;
+        if( dir < 0 ) {
+            Kernel.perror( PROGRAM_NAME ) ;
+            System.err.println( PROGRAM_NAME + ": unable to open directory for writing" );
+            Kernel.exit( 1 ) ;
+        }
+
+        DirectoryEntry newDirectoryEntry = new DirectoryEntry( indexNodeNumber_from , end_name ) ;
+        DirectoryEntry musor = new DirectoryEntry();
+        while (true) {
+            int status = readdir( dir , musor ) ;
+            if( status < 0 )
+            {
+                System.err.println( PROGRAM_NAME +
+                        ": error reading directory in creat" ) ;
+                System.exit( EXIT_FAILURE ) ;
+            }
+            else if( status == 0 )
+            {
+                writedir( dir , newDirectoryEntry ) ;
+                break ;
+            }
+        }
+        close(dir);
+
+        return 0;
+    }
+
     /**
      * This is an internal variable for the simulator which always
      * points to the
